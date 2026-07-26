@@ -119,7 +119,43 @@ client.on("messageCreate", async message => {
     }
 
 
+// INFORMACIJE O GIVEAWAYU
+if (args[0] === "!giveawayinfo") {
 
+    return message.reply(
+        `🎁 **Giveaway Info**\n\n` +
+        `🟢 Status: ${giveaway.active ? "Aktivan" : "Nije aktivan"}\n` +
+        `👥 Učesnici: ${participants.length}\n` +
+        `🔑 Kod: Sakriven`
+    );
+
+}
+
+
+
+// IZVLAČENJE POBEDNIKA
+if (args[0] === "!winner") {
+
+
+    if (participants.length === 0) {
+
+        return message.reply(
+            "❌ Nema učesnika."
+        );
+
+    }
+
+
+    const winnerId = participants[
+        Math.floor(Math.random() * participants.length)
+    ];
+
+
+    return message.reply(
+        `🏆 **Pobednik giveaway-a:**\n\n<@${winnerId}>\n\n🎁 Čestitamo!`
+    );
+
+}
 
 
     // STARI SISTEM !code (ostavljamo ako želiš)
