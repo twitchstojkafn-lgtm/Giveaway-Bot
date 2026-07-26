@@ -1,5 +1,16 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { 
+    Client, 
+    GatewayIntentBits, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle 
+} = require("discord.js");
+
 const fs = require("fs");
+
 
 const client = new Client({
     intents: [
@@ -10,13 +21,17 @@ const client = new Client({
     ]
 });
 
+
 const TOKEN = process.env.TOKEN;
+
 
 const PARTICIPANTS_FILE = "./participants.json";
 const GIVEAWAY_FILE = "./giveaway.json";
 
+
 let participants = JSON.parse(fs.readFileSync(PARTICIPANTS_FILE));
 let giveaway = JSON.parse(fs.readFileSync(GIVEAWAY_FILE));
+
 
 
 client.once("clientReady", () => {
@@ -24,8 +39,10 @@ client.once("clientReady", () => {
 });
 
 
-// pravi kod tipa FN8K4P
+
+// pravi kod FNXXXX
 function generateCode() {
+
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 
     let code = "";
@@ -38,24 +55,32 @@ function generateCode() {
 }
 
 
+
+
 client.on("messageCreate", async message => {
 
+
     if (message.author.bot) return;
+
 
     const args = message.content.split(" ");
 
 
-    // ADMIN pravi novi giveaway
-if (args[0] === "!newgiveaway") {
+
+    // NOVI GIVEAWAY
+    if (args[0] === "!newgiveaway") {
+
 
         const code = generateCode();
+
 
         giveaway.code = code;
         giveaway.active = true;
 
 
-        // Reset učesnika za novi giveaway
+
         participants = [];
+
 
         fs.writeFileSync(
             PARTICIPANTS_FILE,
@@ -69,14 +94,35 @@ if (args[0] === "!newgiveaway") {
         );
 
 
-        return message.reply(
-            `🎁 Novi giveaway pokrenut!\n\n🔑 Kod za Fortnite mapu:\n\`${code}\`\n\n📌 Postavi ovaj kod u mapu.`
-        );
+
+        const button = new ButtonBuilder()
+            .setCustomId("join_giveaway")
+            .setLabel("🎟️ UČESTVUJ")
+            .setStyle(ButtonStyle.Success);
+
+
+
+        const row = new ActionRowBuilder()
+            .addComponents(button);
+
+
+
+        return message.reply({
+
+            content:
+            `🎁 **NOVI FORTNITE GIVEAWAY!**\n\nPronađi tajni kod na Fortnite mapi i klikni dugme ispod.\n\n📌 Kod je sakriven u mapi!`,
+
+            components: [row]
+
+        });
+
     }
 
 
 
-    // IGRAČI UNOSE KOD
+
+
+    // STARI SISTEM !code (ostavljamo ako želiš)
     if (args[0] === "!code") {
 
 
@@ -86,7 +132,7 @@ if (args[0] === "!newgiveaway") {
 
 
         if (!giveaway.active) {
-            return message.reply("❌ Trenutno nema aktivnog giveaway-a.");
+            return message.reply("❌ Nema aktivnog giveaway-a.");
         }
 
 
@@ -109,10 +155,13 @@ if (args[0] === "!newgiveaway") {
             }
 
 
+
             await message.member.roles.add(role);
 
 
+
             participants.push(message.author.id);
+
 
 
             fs.writeFileSync(
@@ -121,17 +170,216 @@ if (args[0] === "!newgiveaway") {
             );
 
 
-            message.reply("🎁 Prijavljen si za giveaway!");
 
-
-        } else {
-
-            message.reply("❌ Pogrešan kod.");
+            return message.reply("🎁 Prijavljen si za giveaway!");
 
         }
+
+
+        return message.reply("❌ Pogrešan kod.");
+
     }
 
 });
+
+
+
+
+
+
+
+// DUGME + MODAL
+
+client.on("interactionCreate", async interaction => {
+
+
+
+    // KLIK NA DUGME
+
+    if (interaction.isButton()) {
+
+
+        if (interaction.customId === "join_giveaway") {
+
+
+
+            const modal = new ModalBuilder()
+
+                .setCustomId("code_modal")
+
+                .setTitle("Unesi Fortnite kod");
+
+
+
+
+            const input = new TextInputBuilder()
+
+                .setCustomId("giveaway_code")
+
+                .setLabel("Kod sa Fortnite mape")
+
+                .setStyle(TextInputStyle.Short)
+
+                .setPlaceholder("FN8K4P");
+
+
+
+
+            const row = new ActionRowBuilder()
+
+                .addComponents(input);
+
+
+
+            modal.addComponents(row);
+
+
+
+            return interaction.showModal(modal);
+
+        }
+
+    }
+
+
+
+
+
+    // SLANJE KODA
+
+    if (interaction.isModalSubmit()) {
+
+
+
+        if (interaction.customId === "code_modal") {
+
+
+
+            const code = interaction.fields.getTextInputValue(
+                "giveaway_code"
+            );
+
+
+
+
+            if (!giveaway.active) {
+
+                return interaction.reply({
+
+                    content:"❌ Trenutno nema giveaway-a.",
+
+                    ephemeral:true
+
+                });
+
+            }
+
+
+
+
+
+            if (participants.includes(interaction.user.id)) {
+
+                return interaction.reply({
+
+                    content:"⚠️ Već si učestvovao!",
+
+                    ephemeral:true
+
+                });
+
+            }
+
+
+
+
+
+            if (code !== giveaway.code) {
+
+
+                return interaction.reply({
+
+                    content:"❌ Pogrešan kod.",
+
+                    ephemeral:true
+
+                });
+
+            }
+
+
+
+
+
+
+            const role = interaction.guild.roles.cache.find(
+
+                r => r.name === "Verified"
+
+            );
+
+
+
+
+
+            if (!role) {
+
+
+                return interaction.reply({
+
+                    content:"❌ Nema Verified role.",
+
+                    ephemeral:true
+
+                });
+
+            }
+
+
+
+
+
+            await interaction.member.roles.add(role);
+
+
+
+
+            participants.push(interaction.user.id);
+
+
+
+
+            fs.writeFileSync(
+
+                PARTICIPANTS_FILE,
+
+                JSON.stringify(participants, null, 2)
+
+            );
+
+
+
+
+
+            return interaction.reply({
+
+                content:"🎁 Uspešno si prijavljen za giveaway!",
+
+                ephemeral:true
+
+            });
+
+
+        }
+
+    }
+
+
+
+});
+
+
+
 
 
 client.login(TOKEN);
